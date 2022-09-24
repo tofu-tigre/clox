@@ -1,9 +1,8 @@
 #ifndef vm_h
 #define vm_h
 
-#include "chunk.h"
-#include "common.h"
-#include "debug.h"
+#include "object.h"
+#include "value.h"
 #include "stack.h"
 
 
@@ -17,7 +16,10 @@ typedef struct {
     Chunk *chunk;
     uint8_t *ip;
     Stack stack;
+    Obj* objects;
 } VM;
+
+extern VM vm;
 
 void init_vm();
 void free_vm();

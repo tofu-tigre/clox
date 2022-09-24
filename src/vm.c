@@ -1,15 +1,22 @@
 #include <stdarg.h>
 #include <stdio.h>
-#include "vm.h"
-#include "value.h"
-#include "compiler.h"
+#include <string.h>
 
-static VM vm;
+#include "common.h"
+#include "compiler.h"
+#include "debug.h"
+#include "object.h"
+#include "memory.h"
+#include "vm.h"
+
+VM vm;
 static uint8_t read_byte();
 static Value read_constant();
 static Value read_constant_long();
 static InterpretResult run();
 static void runtime_error(const char* format, ...);
+static void concatenate();
+static void string_multiply();
 
 
 
@@ -89,9 +96,40 @@ static InterpretResult run() {
                 break;
             }
 
-            case OP_ADD: BINARY_OP(NUMBER_VAL, +); break;
+            case OP_ADD: {
+                Value b = peek(&vm.stack, 0);
+                Value a = peek(&vm.stack, 1);
+
+                if (IS_STRING(a) && IS_STRING(b)) {
+                    concatenate();
+                } else if (IS_NUMBER(a) && IS_NUMBER(b)) {
+                    double b_num = AS_NUMBER(pop(&vm.stack));
+                    double a_num = AS_NUMBER(pop(&vm.stack));
+                    push(&vm.stack, NUMBER_VAL(a_num + b_num));
+                } else {
+                    runtime_error("Operands must be two numbers or two strings.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -); break;
-            case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
+            case OP_MULTIPLY: {
+                Value b = peek(&vm.stack, 0);
+                Value a = peek(&vm.stack, 1);
+
+                if (IS_STRING(a) && IS_NUMBER(b)) {
+                    string_multiply();
+                } else if (IS_NUMBER(a) && IS_STRING(b)) {
+                    string_multiply();
+                } else if (IS_NUMBER(a) && IS_NUMBER(b)) {
+                    double b_num = AS_NUMBER(pop(&vm.stack));
+                    double a_num = AS_NUMBER(pop(&vm.stack));
+                    push(&vm.stack, NUMBER_VAL(a_num * b_num));
+                } else {
+                    runtime_error("Operands must be two numbers or a string and a number.");
+                }
+                break;
+            }
             case OP_DIVIDE: BINARY_OP(NUMBER_VAL, /); break;
             case OP_GREATER: BINARY_OP(BOOL_VAL, >); break;
             case OP_LESS: BINARY_OP(BOOL_VAL, <); break;
@@ -145,11 +183,13 @@ static void runtime_error(const char* format, ...) {
 void init_vm() {
     init_stack(&vm.stack);
     vm.chunk = NULL;
+    vm.objects = NULL;
 }
 
 
 void free_vm() {
     free_stack(&vm.stack);
+    free_objects();
     if(vm.chunk == NULL) return;
     free_chunk(vm.chunk);
 }
@@ -169,4 +209,45 @@ static Value read_constant() {
 static Value read_constant_long() {
     uint16_t index = (read_byte() << 8) | read_byte();
     return vm.chunk->constants.values[index];
+}
+
+static void concatenate() {
+    ObjString* b = AS_STRING(pop(&vm.stack));
+    ObjString* a = AS_STRING(pop(&vm.stack));
+
+    int length = a->length + b->length;
+    char* chars = ALLOCATE(char, length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+    chars[length] = '\0';
+
+    ObjString* result = take_string(chars, length);
+    push(&vm.stack, OBJ_VAL(result));
+}
+
+static void string_multiply() {
+    double b_num;
+    ObjString* a_str;
+    Value b_val = pop(&vm.stack);
+    Value a_val = pop(&vm.stack);
+    if(IS_NUMBER(b_val)) {
+        b_num = AS_NUMBER(b_val);
+        a_str = AS_STRING(a_val);
+    } else {
+        b_num = AS_NUMBER(a_val);
+        a_str = AS_STRING(b_val);
+    }
+
+    int length = b_num * a_str->length;
+    char* chars = ALLOCATE(char, length + 1);
+    int i = 0;
+    for (i = 0; i < b_num; i++) {
+        memcpy(chars + (a_str->length * i), a_str->chars, a_str->length);
+    }
+    chars[length] = '\0';
+
+    ObjString* result = take_string(chars, length);
+    push(&vm.stack, OBJ_VAL(result));
+    
+
 }

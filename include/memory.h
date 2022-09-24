@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include "common.h"
+#include "object.h"
 
 #define ALLOCATE(type, count) \
     (type*)reallocate(NULL, 0, sizeof(type) * (count))
@@ -19,6 +20,9 @@
 #define FREE_ARRAY(type, pointer, oldCount) \
     reallocate(pointer, sizeof(type) * (oldCount), 0)
 
+#define FREE(type, pointer) reallocate(pointer, sizeof(type), 0)
+
 void *reallocate(void *pointer, size_t old_size, size_t new_size);
+void free_objects();
 
 #endif

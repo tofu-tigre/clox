@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "vm.h"
+#include "object.h"
 #include "scanner.h"
 
 typedef void (*ParseFn)();

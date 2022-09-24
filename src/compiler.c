@@ -25,6 +25,7 @@ static void number();
 static void grouping();
 static void binary();
 static void unary();
+static void string();
 static ParseRule* get_rule(TokenType type);
 static void parse_precedence(Precedence precedence);
 static void literal();
@@ -50,7 +51,7 @@ ParseRule rules[] = {
   [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
   [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
@@ -230,6 +231,7 @@ static void advance() {
 
     for(;;) {
         parser.current = scan_token();
+
         if(parser.current.type != TOKEN_ERROR) break;
         error_at_current(parser.current.start);
     }
@@ -271,4 +273,9 @@ static void literal() {
         case TOKEN_TRUE:  emit_byte(OP_TRUE);  break;
         default: return;
     }
+}
+
+static void string() {
+    emit_constant(OBJ_VAL(copy_string(parser.previous.start + 1,
+        parser.previous.length - 2)));
 }
