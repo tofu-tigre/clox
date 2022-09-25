@@ -2,6 +2,7 @@
 #define vm_h
 
 #include "object.h"
+#include "table.h"
 #include "value.h"
 #include "stack.h"
 
@@ -16,6 +17,7 @@ typedef struct {
     Chunk *chunk;
     uint8_t *ip;
     Stack stack;
+    Table strings;
     Obj* objects;
 } VM;
 

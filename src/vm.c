@@ -182,6 +182,7 @@ static void runtime_error(const char* format, ...) {
 
 void init_vm() {
     init_stack(&vm.stack);
+    init_table(&vm.strings);
     vm.chunk = NULL;
     vm.objects = NULL;
 }
@@ -189,6 +190,7 @@ void init_vm() {
 
 void free_vm() {
     free_stack(&vm.stack);
+    free_table(&vm.strings);
     free_objects();
     if(vm.chunk == NULL) return;
     free_chunk(vm.chunk);
