@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "memory.h"
 #include "object.h"
@@ -20,6 +21,9 @@ static Entry* find_entry(Entry* entries, int capacity, ObjString* key) {
                 if (tombstone == NULL)
                     tombstone = entry;
             }
+        } else if (entry->key == key) {
+            /* Key found. */
+            return entry;
         }
 
         index = (index + 1) % capacity;
@@ -52,12 +56,13 @@ static void adjust_capacity(Table* table, int capacity) {
 
 void init_table(Table* table) {
   table->count = 0;
-  table->capacity = 0;
-  table->entries = ALLOCATE(Entry, DEFAULT_TABLE_SIZE);
-  for (int i = 0; i < DEFAULT_TABLE_SIZE; i++) {
+  table->capacity = 0; //DEFAULT_TABLE_SIZE;
+  table->entries = NULL; //ALLOCATE(Entry, DEFAULT_TABLE_SIZE);
+  /* for (int i = 0; i < DEFAULT_TABLE_SIZE; i++) {
         table->entries[i].key = NULL;
         table->entries[i].value = NIL_VAL;
     }
+    */
 }
 
 void free_table(Table* table) {

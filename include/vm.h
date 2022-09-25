@@ -18,6 +18,7 @@ typedef struct {
     uint8_t *ip;
     Stack stack;
     Table strings;
+    Table globals;
     Obj* objects;
 } VM;
 

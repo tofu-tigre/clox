@@ -31,6 +31,8 @@ static void string_multiply();
       push(&vm.stack, valueType(a op b)); \
     } while (false)
 
+#define READ_CONSTANT() (vm.chunk->constants.values[read_byte()])
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 
 /* Starts up the virtual machine.
  * First it creates a chunk and then writes bytecode
@@ -156,9 +158,29 @@ static InterpretResult run() {
                 push(&vm.stack, BOOL_VAL(values_equal(a, b)));
                 break;
             }
+            case OP_POP: {
+                pop(&vm.stack);
+                break;
+            }
             case OP_PRINT: {
                 print_value(pop(&vm.stack));
                 printf("\n");
+                break;
+            }
+            case OP_DEFINE_GLOBAL: {
+                ObjString* name = READ_STRING();
+                table_set(&vm.globals, name, peek(&vm.stack, 0));
+                pop(&vm.stack);
+                break;
+            }
+            case OP_GET_GLOBAL: {
+                ObjString* name = READ_STRING();
+                Value value;
+                if (!table_get(&vm.globals, name, &value)) {
+                    runtime_error("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(&vm.stack, value);
                 break;
             }
             case OP_RETURN: {
@@ -166,6 +188,9 @@ static InterpretResult run() {
             }
         }
     }
+
+    #undef READ_STRING
+    #undef READ_CONSTANT
 }
 
 
@@ -186,6 +211,7 @@ static void runtime_error(const char* format, ...) {
 void init_vm() {
     init_stack(&vm.stack);
     init_table(&vm.strings);
+    init_table(&vm.globals);
     vm.chunk = NULL;
     vm.objects = NULL;
 }
@@ -194,6 +220,7 @@ void init_vm() {
 void free_vm() {
     free_stack(&vm.stack);
     free_table(&vm.strings);
+    free_table(&vm.globals);
     free_objects();
     if(vm.chunk == NULL) return;
     free_chunk(vm.chunk);
@@ -253,6 +280,4 @@ static void string_multiply() {
 
     ObjString* result = take_string(chars, length);
     push(&vm.stack, OBJ_VAL(result));
-    
-
 }

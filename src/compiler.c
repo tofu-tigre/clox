@@ -17,6 +17,7 @@ static void error_at(Token* token, const char* message);
 static void consume(TokenType token, const char* message);
 static void end_compiler();
 static void emit_byte(uint8_t byte);
+static void emit_bytes(uint8_t byte1, uint8_t byte2);
 static Chunk* current_chunk();
 static void emit_return();
 static void emit_constant(Value value);
@@ -29,9 +30,16 @@ static void string();
 static void declaration();
 static void statement();
 static void print_statement();
+static void expression_statement();
+static void synchronize();
+static void var_declaration();
+static uint8_t parse_variable(const char* error_message);
 static bool match(TokenType type);
 static bool check(TokenType type);
+static uint8_t identifier_constant(Token* name);
 static ParseRule* get_rule(TokenType type);
+static void variable();
+static void named_variable(Token name);
 static void parse_precedence(Precedence precedence);
 static void literal();
 
@@ -55,7 +63,7 @@ ParseRule rules[] = {
   [TOKEN_GREATER_EQUAL] = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_IDENTIFIER]    = {variable,     NULL,   PREC_NONE},
   [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
   [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
@@ -96,13 +104,89 @@ bool compile(const char* source, Chunk* chunk) {
 }
 
 static void declaration() {
-    statement();
+    if (match(TOKEN_VAR)) {
+        var_declaration();
+    } else {
+        statement();
+    }
+
+    if (parser.panic_mode)
+        synchronize();
+}
+
+static void named_variable(Token name) {
+    uint8_t arg = identifier_constant(&name);
+    emit_bytes(OP_GET_GLOBAL, arg);
+}
+
+static void variable() {
+    named_variable(parser.previous);
+}
+
+static uint8_t identifier_constant(Token* name) {
+    return make_constant(OBJ_VAL(copy_string(name->start, name->length)));
+}
+
+static uint8_t parse_variable(const char* error_message) {
+    consume(TOKEN_IDENTIFIER, error_message);
+    return identifier_constant(&parser.previous);
+}
+
+static void define_variable(uint8_t global) {
+    emit_bytes(OP_DEFINE_GLOBAL, global);
+}
+
+static void var_declaration() {
+    uint8_t global = parse_variable("Expect variable name.");
+
+    if (match(TOKEN_EQUAL)) {
+        expression();
+    } else {
+        emit_byte(OP_NIL);
+    }
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+    define_variable(global);
+}
+
+static void synchronize() {
+    parser.panic_mode = false;
+
+    while (parser.current.type != TOKEN_EOF) {
+        if (parser.previous.type == TOKEN_SEMICOLON)
+            return;
+        
+        switch (parser.current.type) {
+            case TOKEN_CLASS:
+            case TOKEN_FUN:
+            case TOKEN_VAR:
+            case TOKEN_FOR:
+            case TOKEN_IF:
+            case TOKEN_WHILE:
+            case TOKEN_PRINT:
+            case TOKEN_RETURN:
+                return;
+
+            default:
+                ; // Do nothing.
+        }
+
+        advance();
+    }
 }
 
 static void statement() {
     if (match(TOKEN_PRINT)) {
         print_statement();
+    } else {
+        expression_statement();
     }
+}
+
+static void expression_statement() {
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
+    emit_byte(OP_POP);
 }
 
 static void print_statement() {
