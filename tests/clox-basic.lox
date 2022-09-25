@@ -1,3 +1,4 @@
-3 + 4 + 5;
-"s" + "car";
-"fart" * (4 * 10);
+print "2 + 3";
+print "1 - 4";
+print true;
+print false;

@@ -26,6 +26,11 @@ static void grouping();
 static void binary();
 static void unary();
 static void string();
+static void declaration();
+static void statement();
+static void print_statement();
+static bool match(TokenType type);
+static bool check(TokenType type);
 static ParseRule* get_rule(TokenType type);
 static void parse_precedence(Precedence precedence);
 static void literal();
@@ -81,12 +86,30 @@ bool compile(const char* source, Chunk* chunk) {
     parser.compiling_chunk = chunk;
     parser.had_error = parser.panic_mode = false;
     advance();
-    expression();
-    consume(TOKEN_EOF, "Expect end of expression.");
+
+    while(!match(TOKEN_EOF)) {
+        declaration();
+    }
+
     end_compiler();
     return !parser.had_error;
 }
 
+static void declaration() {
+    statement();
+}
+
+static void statement() {
+    if (match(TOKEN_PRINT)) {
+        print_statement();
+    }
+}
+
+static void print_statement() {
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+    emit_byte(OP_PRINT);
+}
 
 static void consume(TokenType type, const char* message) {
     if(parser.current.type == type) {
@@ -96,6 +119,17 @@ static void consume(TokenType type, const char* message) {
     error_at_current(message);
 }
 
+static bool check(TokenType type) {
+    return parser.current.type == type;
+}
+
+static bool match(TokenType type) {
+    if (!check(type))
+        return false;
+    
+    advance();
+    return true;
+}
 
 static void parse_precedence(Precedence precedence) {
     advance();

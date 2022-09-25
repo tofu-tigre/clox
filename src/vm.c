@@ -156,9 +156,12 @@ static InterpretResult run() {
                 push(&vm.stack, BOOL_VAL(values_equal(a, b)));
                 break;
             }
-            case OP_RETURN: {
+            case OP_PRINT: {
                 print_value(pop(&vm.stack));
                 printf("\n");
+                break;
+            }
+            case OP_RETURN: {
                 return INTERPRET_OK;
             }
         }
