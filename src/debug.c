@@ -59,8 +59,6 @@ int disassemble_instruction(Chunk *chunk, int offset) {
             return simple_instruction("OP_MULTIPLY", offset);
         case OP_DIVIDE:
             return simple_instruction("OP_DIVIDE", offset);
-        case OP_NULL:
-            return simple_instruction("OP_NULL", offset);
         case OP_TRUE:
             return simple_instruction("OP_TRUE", offset);
         case OP_FALSE:
@@ -83,6 +81,8 @@ int disassemble_instruction(Chunk *chunk, int offset) {
             return constant_instruction("OP_GET_GLOBAL", chunk, offset);
         case OP_NIL:
             return simple_instruction("OP_NIL", offset);
+        case OP_SET_GLOBAL:
+            return constant_instruction("OP_SET_GLOBAL", chunk, offset);
         default:
             printf("Unknown opcode %d\n", instruction);
             return offset + 1;

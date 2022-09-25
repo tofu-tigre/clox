@@ -6,7 +6,7 @@
 #include "object.h"
 #include "scanner.h"
 
-typedef void (*ParseFn)();
+typedef void (*ParseFn)(bool can_assign);
 
 typedef struct {
     Chunk* compiling_chunk;

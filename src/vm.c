@@ -136,7 +136,7 @@ static InterpretResult run() {
             case OP_GREATER: BINARY_OP(BOOL_VAL, >); break;
             case OP_LESS: BINARY_OP(BOOL_VAL, <); break;
 
-            case OP_NULL: {
+            case OP_NIL: {
                 push(&vm.stack, NIL_VAL);
                 break;
             }
@@ -181,6 +181,15 @@ static InterpretResult run() {
                     return INTERPRET_RUNTIME_ERROR;
                 }
                 push(&vm.stack, value);
+                break;
+            }
+            case OP_SET_GLOBAL: {
+                ObjString* name = READ_STRING();
+                if (table_set(&vm.globals, name, peek(&vm.stack, 0))) {
+                    table_delete(&vm.globals, name);
+                    runtime_error("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_RETURN: {
