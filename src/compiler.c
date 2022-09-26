@@ -52,6 +52,11 @@ static void named_variable(Token name, bool can_assign);
 static void parse_precedence(Precedence precedence);
 static void literal(bool can_assign);
 static void block();
+static void if_statement();
+static void patch_jump(int offset);
+static void and_(bool can_assign);
+static void or_(bool can_assign);
+static int emit_jump(uint8_t instruction);
 
 ParseRule rules[] = {
   [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
@@ -76,7 +81,7 @@ ParseRule rules[] = {
   [TOKEN_IDENTIFIER]    = {variable,     NULL,   PREC_NONE},
   [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
-  [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_AND]           = {NULL,     and_,   PREC_AND},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
   [TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE},
@@ -84,7 +89,7 @@ ParseRule rules[] = {
   [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
   [TOKEN_NIL]          = {literal,  NULL,   PREC_NONE},
-  [TOKEN_OR]            = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_OR]            = {NULL,     or_,   PREC_OR},
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
@@ -201,6 +206,26 @@ static void declare_variable() {
     add_local(*name);
 }
 
+static void and_(bool can_assign) {
+    int end_jump = emit_jump(OP_JUMP_IF_FALSE);
+
+    emit_byte(OP_POP);
+    parse_precedence(PREC_AND);
+
+    patch_jump(end_jump);
+}
+
+static void or_(bool can_assign) {
+    int else_jump = emit_jump(OP_JUMP_IF_FALSE);
+    int end_jump = emit_jump(OP_JUMP);
+
+    patch_jump(else_jump);
+    emit_byte(OP_POP);
+
+    parse_precedence(PREC_OR);
+    patch_jump(end_jump);
+}
+
 static uint8_t parse_variable(const char* error_message) {
     consume(TOKEN_IDENTIFIER, error_message);
 
@@ -285,6 +310,41 @@ static void block() {
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+static int emit_jump(uint8_t instruction) {
+    emit_byte(instruction);
+    emit_byte(0xff);
+    emit_byte(0xff);
+    return current_chunk()->count - 2;
+}
+
+static void patch_jump(int offset) {
+    /* -2 to adjust for the bytecode forr the jump offset itself. */
+    int jump = current_chunk()->count - offset - 2;
+
+    if (jump > UINT16_MAX)
+        error("Too much code to jump over.");
+    
+    current_chunk()->code[offset] = (jump >> 8) & 0xff;
+    current_chunk()->code[offset + 1] = jump & 0xff;
+}
+
+static void if_statement() {
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+    int then_jump = emit_jump(OP_JUMP_IF_FALSE);
+    emit_byte(OP_POP);
+    statement();
+
+    int else_jump = emit_jump(OP_JUMP);
+    patch_jump(then_jump);
+    emit_byte(OP_POP);
+
+    if (match(TOKEN_ELSE))
+        statement();
+    patch_jump(else_jump);
+}
 
 static void statement() {
     if (match(TOKEN_PRINT)) {
@@ -293,6 +353,8 @@ static void statement() {
         begin_scope();
         block();
         end_scope();
+    } else if (match(TOKEN_IF)) {
+        if_statement();
     } else {
         expression_statement();
     }
