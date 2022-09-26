@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "vm.h"
+#include "common.h"
 #include "object.h"
 #include "scanner.h"
 
@@ -35,6 +36,17 @@ typedef struct {
     ParseFn infix;
     Precedence precedence;
 } ParseRule;
+
+typedef struct {
+  Token name;
+  int depth;
+} Local;
+
+typedef struct {
+  Local locals[UINT8_COUNT];
+  int local_count;
+  int scope_depth;
+} Compiler;
 
 bool compile(const char* source, Chunk* chunk);
 

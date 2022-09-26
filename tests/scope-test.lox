@@ -1,0 +1,22 @@
+var x = "foo";
+var y = "bar";
+var z = "egg";
+
+{
+    print x + y + z;
+    
+    {
+        var x = "gas";
+        var y = "car";
+        var z = "go";
+        {
+            print x + y + z;
+            {
+                var a = "bob";
+                print a;
+            }
+        }
+        
+    }
+    print "This should be 'foobaregg': " + x + y + z;
+}

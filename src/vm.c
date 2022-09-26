@@ -192,6 +192,16 @@ static InterpretResult run() {
                 }
                 break;
             }
+            case OP_SET_LOCAL: {
+                uint8_t slot = read_byte();
+                vm.stack.data[slot] = peek(&vm.stack, 0);
+                break;
+            }
+            case OP_GET_LOCAL: {
+                uint8_t slot = read_byte();
+                push(&vm.stack, vm.stack.data[slot]);
+                break;
+            }
             case OP_RETURN: {
                 return INTERPRET_OK;
             }
