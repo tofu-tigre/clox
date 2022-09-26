@@ -1,0 +1,12 @@
+var n = 25;
+
+var prev = 0;
+var curr = 1;
+var i = 0;
+while (i < n) {
+    var sum = prev + curr;
+    print prev;
+    prev = curr;
+    curr = sum;
+    i = i + 1;
+}

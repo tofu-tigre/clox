@@ -46,6 +46,7 @@ typedef struct {
   Local locals[UINT8_COUNT];
   int local_count;
   int scope_depth;
+  
 } Compiler;
 
 bool compile(const char* source, Chunk* chunk);
